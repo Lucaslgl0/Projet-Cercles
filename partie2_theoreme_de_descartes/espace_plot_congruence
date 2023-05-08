@@ -1,0 +1,109 @@
+import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
+import numpy as np
+from math import *
+from tqdm import tqdm
+from random import randint
+from espace_fonctions import *
+
+
+fill = False
+
+# on demande les courbures des cercles de départ et on fait leur inverse pour avoir les rayons
+cercle1_rayon = 1 / (int(input("Quel est la courbure du cercle 1:")))
+cercle2_rayon = 1 / (int(input("Quel est la courbure du cercle 2:")))
+cercle3_rayon = 1 / (int(input("Quel est la courbure du cercle 3:")))
+
+# on ordonne les cercles dans l'ordre décroissant
+while cercle3_rayon > cercle2_rayon or cercle2_rayon > cercle1_rayon:
+    if cercle3_rayon > cercle2_rayon:
+        cercle2_rayon, cercle3_rayon = cercle3_rayon, cercle2_rayon
+
+    if cercle2_rayon > cercle1_rayon:
+        cercle1_rayon, cercle2_rayon = cercle2_rayon, cercle1_rayon
+
+# on plot les deux premiers cercles
+cercle1 = plt.Circle((0, 0), cercle1_rayon, color="w", fill=False)
+cercle2 = plt.Circle(
+    (cercle1_rayon + cercle2_rayon, 0), cercle2_rayon, color="w", fill=False
+)
+
+
+C1 = Cercles_complexe(np.array([0, 0]), cercle1_rayon)
+C2 = Cercles_complexe(np.array([cercle1_rayon + cercle2_rayon, 0]), cercle2_rayon)
+
+C1_prime = Cercles_complexe(np.array([0, 0]), cercle3_rayon + cercle1_rayon)
+C2_prime = Cercles_complexe(
+    np.array([cercle1_rayon + cercle2_rayon, 0]), cercle2_rayon + cercle3_rayon
+)
+
+# on calcule le centre du troisième cercle pour qu'il soit tangeant aux deux autres
+cercle3_centre = C1_prime.coordonnees_points_intersection(C2_prime)
+
+a = cercle3_centre[0][0]
+h = cercle3_centre[0][1]
+
+cercle3 = plt.Circle((a, h), cercle3_rayon, color="w", fill=False)
+
+C3 = Cercles_complexe(np.array([a, h]), cercle3_rayon)
+
+ax = plt.gca()
+ax.cla()
+
+ax.set_xlim((-15, 15))
+ax.set_ylim((-15, 15))
+
+ax.add_patch(cercle1)
+ax.add_patch(cercle2)
+ax.add_patch(cercle3)
+
+# on demande le nombre d'itérations souhaité et le modulo que l'on veut tester
+iterations = int(input("Combien voulez-vous d'itérations ?"))
+congruence = int(input("Quelle  modulo souhaitez vous tester : "))
+
+# on demande si on veut avoir les cercles entièrement colorisé ou juste les traits
+letter = input("Voulez vous remplir les cercles ? [o/n]")
+if letter == "o" or letter == "O":
+    fill = True
+
+# on calcule les cercles de la fractales
+print("Génération des cercles...")
+liste = Cercles_complexe.fractale([C1, C2, C3], iterations)
+print("Affichage des cercles...")
+
+# on fait une liste de couleurs au hasard
+color = []
+for i in range(congruence):
+    color.append('#%06X' % randint(0, 0xFFFFFF))
+
+# on plot les cercles de la fractale et on les colorie en fonction de leur congruence
+i = 0
+new_color = {}
+for cercle in tqdm(liste):
+    i += 1
+    if (3 / 4) * (i - 4) + 1 > 1:
+        n = floor(np.log((3 / 4) * (i - 4) + 1) / np.log(4))
+    else:
+        n = 0
+
+    ax.add_patch(
+        plt.Circle(
+            (cercle.centre[0], cercle.centre[1]),
+            cercle.rayon,
+            color=color[int(cercle.courbure) % congruence],
+            fill=fill,
+            linewidth=0.5,  # si on demende de juste coloriser les traits il est mieux
+                            # d'avoir des traits plus large, mais pas trop pour pouvoir
+                            # discerner les plus petits cercles
+        )
+    )
+    new_color[int(cercle.courbure) % congruence] = color[int(cercle.courbure) % congruence]
+
+# on fait la légende et on affiche la fractale
+patches = [mpatches.Patch(color=new_color[i], label=i) for i in new_color.keys()]
+plt.legend(handles=patches, loc='upper right', ncol=2 )
+plt.autoscale()
+print("Enregistrement de l'image...")
+plt.savefig("fractale n=" + str(iterations) + ".png", dpi=1500)
+plt.show()
+print("------- Fin du programme -------")
